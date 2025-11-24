@@ -5,10 +5,17 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
 } from "react-router";
+import { clerkMiddleware, rootAuthLoader } from '@clerk/react-router/server';
+import { ClerkProvider, SignedIn, SignedOut, UserButton, SignInButton, RedirectToSignIn } from '@clerk/react-router';
 
 import type { Route } from "./+types/root";
 import "./app.css";
+
+export const middleware: Route.MiddlewareFunction[] = [clerkMiddleware()];
+
+export const loader = (args: Route.LoaderArgs) => rootAuthLoader(args);
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -41,8 +48,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
-  return <Outlet />;
+export default function App({ loaderData }: Route.ComponentProps) {
+  const location = useLocation();
+  const isSignInPage = location.pathname.startsWith('/sign-in');
+
+  return (
+    <ClerkProvider loaderData={loaderData}>
+      <SignedIn>
+        <header className="flex items-center justify-center py-8 px-4">
+          <UserButton />
+        </header>
+        <Outlet />
+      </SignedIn>
+      <SignedOut>
+        {isSignInPage ? (
+          <Outlet />
+        ) : (
+          <RedirectToSignIn />
+        )}
+      </SignedOut>
+    </ClerkProvider>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
