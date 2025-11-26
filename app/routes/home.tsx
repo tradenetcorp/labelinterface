@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { requireUser } from "../lib/auth.server";
 import type { Route } from "./+types/home";
 import { ListenCheck } from "../components/listen-check";
 import { LoadingScreen } from "../components/loading-screen";
@@ -8,6 +9,11 @@ export function meta({}: Route.MetaArgs) {
     { title: "Label App" },
     { name: "description", content: "Listen and Check Interface" },
   ];
+}
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const user = await requireUser(request);
+  return { user };
 }
 
 export default function Home() {

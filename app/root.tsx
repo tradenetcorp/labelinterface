@@ -6,16 +6,18 @@ import {
   Scripts,
   ScrollRestoration,
   useLocation,
+  redirect,
 } from "react-router";
-import { clerkMiddleware, rootAuthLoader } from '@clerk/react-router/server';
-import { ClerkProvider, SignedIn, SignedOut, UserButton, SignInButton, RedirectToSignIn } from '@clerk/react-router';
-
+import { getUser } from "./lib/auth.server";
 import type { Route } from "./+types/root";
 import "./app.css";
 
-export const middleware: Route.MiddlewareFunction[] = [clerkMiddleware()];
+export const middleware: Route.MiddlewareFunction[] = [];
 
-export const loader = (args: Route.LoaderArgs) => rootAuthLoader(args);
+export async function loader({ request }: Route.LoaderArgs) {
+  const user = await getUser(request);
+  return { user };
+}
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -50,24 +52,46 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App({ loaderData }: Route.ComponentProps) {
   const location = useLocation();
-  const isSignInPage = location.pathname.startsWith('/sign-in');
+  const user = loaderData?.user;
+  const isPublicPage =
+    location.pathname.startsWith("/login") ||
+    location.pathname.startsWith("/verify") ||
+    location.pathname.startsWith("/sign-in");
+
+  // Redirect to login if not authenticated and not on a public page
+  if (!user && !isPublicPage) {
+    throw redirect("/login");
+  }
 
   return (
-    <ClerkProvider loaderData={loaderData}>
-      <SignedIn>
-        <header className="flex items-center justify-end py-4 px-6 border-b border-gray-200 bg-white">
-          <UserButton />
+    <>
+      {user && (
+        <header className="flex items-center justify-between py-4 px-6 border-b border-gray-200 bg-white">
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-600">
+              {user.name || user.email}
+            </span>
+            {user.role === "admin" && (
+              <a
+                href="/admin/users"
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Admin Panel
+              </a>
+            )}
+          </div>
+          <form action="/logout" method="post">
+            <button
+              type="submit"
+              className="text-sm text-gray-600 hover:text-black"
+            >
+              Logout
+            </button>
+          </form>
         </header>
-        <Outlet />
-      </SignedIn>
-      <SignedOut>
-        {isSignInPage ? (
-          <Outlet />
-        ) : (
-          <RedirectToSignIn />
-        )}
-      </SignedOut>
-    </ClerkProvider>
+      )}
+      <Outlet />
+    </>
   );
 }
 
