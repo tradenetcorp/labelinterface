@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { createLoginCode } from "../lib/otp.server";
 import { sendOTPEmail } from "../lib/email.server";
 import { getUser } from "../lib/auth.server";
+import { logActivity } from "../lib/activity-log.server";
 import type { Route } from "./+types/login";
 
 const prisma = new PrismaClient();
@@ -38,6 +39,13 @@ export async function action({ request }: Route.ActionArgs) {
   // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
+    await logActivity({
+      action: "login_request",
+      category: "auth",
+      status: "failure",
+      metadata: { email, reason: "invalid_email_format" },
+      request,
+    });
     return new Response(JSON.stringify({ error: "Invalid email format" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
@@ -49,6 +57,8 @@ export async function action({ request }: Route.ActionArgs) {
     let user = await prisma.user.findUnique({
       where: { email },
     });
+
+    const isNewUser = !user;
 
     if (!user) {
       // Create new user
@@ -63,6 +73,14 @@ export async function action({ request }: Route.ActionArgs) {
 
     // Check if user is active
     if (!user.active) {
+      await logActivity({
+        userId: user.id,
+        action: "login_request",
+        category: "auth",
+        status: "failure",
+        metadata: { email, reason: "account_deactivated" },
+        request,
+      });
       return new Response(
         JSON.stringify({
           error: "Account is deactivated. Please contact an administrator.",
@@ -76,6 +94,14 @@ export async function action({ request }: Route.ActionArgs) {
 
     // Check if user has a password (admin users)
     if (user.password) {
+      await logActivity({
+        userId: user.id,
+        action: "login_request",
+        category: "auth",
+        status: "success",
+        metadata: { email, method: "password", redirectedToPassword: true },
+        request,
+      });
       // Redirect to password login page
       return redirect(`/login-password?email=${encodeURIComponent(email)}`);
     }
@@ -84,10 +110,26 @@ export async function action({ request }: Route.ActionArgs) {
     const code = await createLoginCode(user.id);
     await sendOTPEmail(email, code);
 
+    await logActivity({
+      userId: user.id,
+      action: "login_request",
+      category: "auth",
+      status: "success",
+      metadata: { email, method: "otp", newUser: isNewUser },
+      request,
+    });
+
     // Redirect to verify page with email
     return redirect(`/verify?email=${encodeURIComponent(email)}`);
   } catch (error) {
     console.error("Login error:", error);
+    await logActivity({
+      action: "login_request",
+      category: "auth",
+      status: "error",
+      metadata: { email, error: error instanceof Error ? error.message : "Unknown error" },
+      request,
+    });
     return new Response(
       JSON.stringify({ error: "Failed to send login code. Please try again." }),
       {
@@ -144,4 +186,3 @@ export default function LoginPage({ actionData }: Route.ComponentProps) {
     </div>
   );
 }
-

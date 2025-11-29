@@ -1,49 +1,71 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useFetcher } from "react-router";
 import { ListenSection } from "./listen-section";
 import { CheckSection } from "./check-section";
 import { LoadingScreen } from "./loading-screen";
 
-export function ListenCheck() {
-  const [transcript, setTranscript] = useState("在古晋我们现在在equoternal的天气这equal Ternal 也没有什么啦也没有什么四个season 都 没有啦只有说热下雨整年都是");
-  const [isLoading, setIsLoading] = useState(false);
+interface ListenCheckProps {
+  userId?: number;
+  userEmail?: string;
+}
+
+export function ListenCheck({ userId, userEmail }: ListenCheckProps) {
+  const originalTranscript = "在古晋我们现在在equoternal的天气这equal Ternal 也没有什么啦也没有什么四个season 都 没有啦只有说热下雨整年都是";
+  const [transcript, setTranscript] = useState(originalTranscript);
+  const [markedCorrect, setMarkedCorrect] = useState(false);
+  const transcriptIdRef = useRef(`transcript-${Date.now()}`);
+  
+  const fetcher = useFetcher();
+  const isLoading = fetcher.state !== "idle";
 
   const handlePlay = () => {
-    // TODO: Implement audio playback logic
-    console.log("Play audio");
+    fetcher.submit(
+      {
+        action: "play",
+        transcriptId: transcriptIdRef.current,
+      },
+      { method: "post", action: "/api/transcript" }
+    );
   };
 
   const handleCorrect = () => {
-    // TODO: Implement correct action
-    console.log("Mark as correct");
+    const newCorrectState = !markedCorrect;
+    setMarkedCorrect(newCorrectState);
+    fetcher.submit(
+      {
+        action: "correct",
+        transcriptId: transcriptIdRef.current,
+        markedCorrect: String(newCorrectState),
+      },
+      { method: "post", action: "/api/transcript" }
+    );
   };
 
   const handleEdit = () => {
-    // TODO: Implement edit action
-    console.log("Edit transcript");
+    // Edit is handled locally in CheckSection, no API call needed
+    console.log("Edit mode toggled");
   };
 
-  const handleSubmit = async () => {
-    setIsLoading(true);
-    try {
-      // TODO: Implement submit action
-      console.log("Submit transcript");
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSubmit = () => {
+    fetcher.submit(
+      {
+        action: "submit",
+        transcriptId: transcriptIdRef.current,
+        transcript: transcript,
+        originalTranscript: originalTranscript,
+      },
+      { method: "post", action: "/api/transcript" }
+    );
   };
 
-  const handleSkip = async () => {
-    setIsLoading(true);
-    try {
-      // TODO: Implement skip action
-      console.log("Skip transcript");
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSkip = () => {
+    fetcher.submit(
+      {
+        action: "skip",
+        transcriptId: transcriptIdRef.current,
+      },
+      { method: "post", action: "/api/transcript" }
+    );
   };
 
   if (isLoading) {
@@ -64,5 +86,3 @@ export function ListenCheck() {
     </div>
   );
 }
-
-

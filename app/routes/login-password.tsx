@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { createSession } from "../lib/auth.server";
 import { commitSession, getSession } from "../lib/session.server";
 import { getUser } from "../lib/auth.server";
+import { logActivity } from "../lib/activity-log.server";
 import type { Route } from "./+types/login-password";
 
 const prisma = new PrismaClient();
@@ -63,6 +64,13 @@ export async function action({ request }: Route.ActionArgs) {
     });
 
     if (!user || !user.password) {
+      await logActivity({
+        action: "login_password",
+        category: "auth",
+        status: "failure",
+        metadata: { email, reason: "user_not_found" },
+        request,
+      });
       return new Response(JSON.stringify({ error: "Invalid credentials" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -70,6 +78,14 @@ export async function action({ request }: Route.ActionArgs) {
     }
 
     if (!user.active) {
+      await logActivity({
+        userId: user.id,
+        action: "login_password",
+        category: "auth",
+        status: "failure",
+        metadata: { email, reason: "account_deactivated" },
+        request,
+      });
       return new Response(
         JSON.stringify({
           error: "Account is deactivated. Please contact an administrator.",
@@ -85,6 +101,14 @@ export async function action({ request }: Route.ActionArgs) {
     const isValid = await bcrypt.compare(password, user.password);
 
     if (!isValid) {
+      await logActivity({
+        userId: user.id,
+        action: "login_password",
+        category: "auth",
+        status: "failure",
+        metadata: { email, reason: "invalid_password" },
+        request,
+      });
       return new Response(JSON.stringify({ error: "Invalid password" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -93,6 +117,16 @@ export async function action({ request }: Route.ActionArgs) {
 
     // Create session
     const sessionId = await createSession(user.id);
+
+    // Log successful login
+    await logActivity({
+      userId: user.id,
+      action: "login_password",
+      category: "auth",
+      status: "success",
+      metadata: { email, method: "password" },
+      request,
+    });
 
     // Set session cookie
     const session = await getSession(request.headers.get("Cookie"));
@@ -110,6 +144,13 @@ export async function action({ request }: Route.ActionArgs) {
       throw error;
     }
     console.error("Password login error:", error);
+    await logActivity({
+      action: "login_password",
+      category: "auth",
+      status: "error",
+      metadata: { email, error: error instanceof Error ? error.message : "Unknown error" },
+      request,
+    });
     return new Response(
       JSON.stringify({ error: "Failed to login. Please try again." }),
       {
@@ -176,4 +217,3 @@ export default function LoginPasswordPage({
     </div>
   );
 }
-

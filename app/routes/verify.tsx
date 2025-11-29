@@ -4,6 +4,7 @@ import { verifyLoginCode } from "../lib/otp.server";
 import { createSession } from "../lib/auth.server";
 import { commitSession, getSession } from "../lib/session.server";
 import { getUser } from "../lib/auth.server";
+import { logActivity } from "../lib/activity-log.server";
 import type { Route } from "./+types/verify";
 
 const prisma = new PrismaClient();
@@ -62,6 +63,13 @@ export async function action({ request }: Route.ActionArgs) {
     });
 
     if (!user) {
+      await logActivity({
+        action: "otp_verify",
+        category: "auth",
+        status: "failure",
+        metadata: { email, reason: "user_not_found" },
+        request,
+      });
       return new Response(JSON.stringify({ error: "Invalid email" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -69,6 +77,14 @@ export async function action({ request }: Route.ActionArgs) {
     }
 
     if (!user.active) {
+      await logActivity({
+        userId: user.id,
+        action: "otp_verify",
+        category: "auth",
+        status: "failure",
+        metadata: { email, reason: "account_deactivated" },
+        request,
+      });
       return new Response(
         JSON.stringify({
           error: "Account is deactivated. Please contact an administrator.",
@@ -84,6 +100,14 @@ export async function action({ request }: Route.ActionArgs) {
     const isValid = await verifyLoginCode(user.id, code);
 
     if (!isValid) {
+      await logActivity({
+        userId: user.id,
+        action: "otp_verify",
+        category: "auth",
+        status: "failure",
+        metadata: { email, reason: "invalid_or_expired_code" },
+        request,
+      });
       return new Response(
         JSON.stringify({
           error: "Invalid or expired code. Please request a new one.",
@@ -97,6 +121,16 @@ export async function action({ request }: Route.ActionArgs) {
 
     // Create session
     const sessionId = await createSession(user.id);
+
+    // Log successful verification
+    await logActivity({
+      userId: user.id,
+      action: "otp_verify",
+      category: "auth",
+      status: "success",
+      metadata: { email },
+      request,
+    });
 
     // Set session cookie
     const session = await getSession(request.headers.get("Cookie"));
@@ -114,6 +148,13 @@ export async function action({ request }: Route.ActionArgs) {
       throw error;
     }
     console.error("Verify error:", error);
+    await logActivity({
+      action: "otp_verify",
+      category: "auth",
+      status: "error",
+      metadata: { email, error: error instanceof Error ? error.message : "Unknown error" },
+      request,
+    });
     return new Response(
       JSON.stringify({ error: "Failed to verify code. Please try again." }),
       {
@@ -184,4 +225,3 @@ export default function VerifyPage({
     </div>
   );
 }
-
