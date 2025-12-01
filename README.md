@@ -103,6 +103,9 @@ npm start
 - **Studio**: `npx prisma studio` (visual database browser)
 - **Seed**: `npx prisma db seed` (creates initial admin user)
 
+admin@mindco.mv
+password:email
+
 ## Project Structure
 
 ```
