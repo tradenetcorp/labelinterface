@@ -1,28 +1,68 @@
-import { useState, useRef } from "react";
-import { useFetcher } from "react-router";
+import { useState } from "react";
+import { useFetcher, useRevalidator } from "react-router";
 import { ListenSection } from "./listen-section";
 import { CheckSection } from "./check-section";
 import { LoadingScreen } from "./loading-screen";
 
+interface TranscriptData {
+  id: number;
+  originalText: string;
+  audioUrl: string | null;
+  s3AudioKey: string;
+}
+
 interface ListenCheckProps {
   userId?: number;
   userEmail?: string;
+  transcript?: TranscriptData | null;
+  pendingCount: number;
 }
 
-export function ListenCheck({ userId, userEmail }: ListenCheckProps) {
-  const originalTranscript = "在古晋我们现在在equoternal的天气这equal Ternal 也没有什么啦也没有什么四个season 都 没有啦只有说热下雨整年都是";
-  const [transcript, setTranscript] = useState(originalTranscript);
+export function ListenCheck({
+  userId,
+  userEmail,
+  transcript: transcriptData,
+  pendingCount,
+}: ListenCheckProps) {
+  const [editedText, setEditedText] = useState(transcriptData?.originalText ?? "");
   const [markedCorrect, setMarkedCorrect] = useState(false);
-  const transcriptIdRef = useRef(`transcript-${Date.now()}`);
-  
+
   const fetcher = useFetcher();
-  const isLoading = fetcher.state !== "idle";
+  const revalidator = useRevalidator();
+  const isLoading = fetcher.state !== "idle" || revalidator.state === "loading";
+
+  // Reset state when transcript changes
+  const transcriptId = transcriptData?.id;
+  const [lastTranscriptId, setLastTranscriptId] = useState(transcriptId);
+  if (transcriptId !== lastTranscriptId) {
+    setLastTranscriptId(transcriptId);
+    setEditedText(transcriptData?.originalText ?? "");
+    setMarkedCorrect(false);
+  }
+
+  // Empty state - no more transcripts to review
+  if (!transcriptData) {
+    return (
+      <div className="flex h-[calc(100vh-120px)] items-center justify-center p-6">
+        <div className="text-center space-y-4">
+          <div className="text-6xl">🎉</div>
+          <h2 className="text-2xl font-semibold text-gray-200">All caught up!</h2>
+          <p className="text-gray-400">
+            No more transcripts to review. Check back later or import new ones.
+          </p>
+          {userEmail && (
+            <p className="text-sm text-gray-500">Logged in as {userEmail}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const handlePlay = () => {
     fetcher.submit(
       {
         action: "play",
-        transcriptId: transcriptIdRef.current,
+        transcriptId: String(transcriptData.id),
       },
       { method: "post", action: "/api/transcript" }
     );
@@ -34,7 +74,7 @@ export function ListenCheck({ userId, userEmail }: ListenCheckProps) {
     fetcher.submit(
       {
         action: "correct",
-        transcriptId: transcriptIdRef.current,
+        transcriptId: String(transcriptData.id),
         markedCorrect: String(newCorrectState),
       },
       { method: "post", action: "/api/transcript" }
@@ -50,9 +90,10 @@ export function ListenCheck({ userId, userEmail }: ListenCheckProps) {
     fetcher.submit(
       {
         action: "submit",
-        transcriptId: transcriptIdRef.current,
-        transcript: transcript,
-        originalTranscript: originalTranscript,
+        transcriptId: String(transcriptData.id),
+        transcript: editedText,
+        originalTranscript: transcriptData.originalText,
+        markedCorrect: String(markedCorrect),
       },
       { method: "post", action: "/api/transcript" }
     );
@@ -62,7 +103,7 @@ export function ListenCheck({ userId, userEmail }: ListenCheckProps) {
     fetcher.submit(
       {
         action: "skip",
-        transcriptId: transcriptIdRef.current,
+        transcriptId: String(transcriptData.id),
       },
       { method: "post", action: "/api/transcript" }
     );
@@ -73,16 +114,30 @@ export function ListenCheck({ userId, userEmail }: ListenCheckProps) {
   }
 
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-6 p-6">
-      <ListenSection onPlay={handlePlay} />
-      <CheckSection
-        transcript={transcript}
-        onTranscriptChange={setTranscript}
-        onCorrect={handleCorrect}
-        onEdit={handleEdit}
-        onSubmit={handleSubmit}
-        onSkip={handleSkip}
-      />
+    <div className="flex flex-col h-[calc(100vh-120px)] p-6">
+      {/* Header with count */}
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-lg font-medium text-gray-300">
+          Transcript Validation
+        </h1>
+        <div className="text-sm text-gray-500">
+          {pendingCount} remaining
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="flex flex-1 gap-6">
+        <ListenSection onPlay={handlePlay} audioUrl={transcriptData.audioUrl} />
+        <CheckSection
+          transcript={editedText}
+          onTranscriptChange={setEditedText}
+          onCorrect={handleCorrect}
+          onEdit={handleEdit}
+          onSubmit={handleSubmit}
+          onSkip={handleSkip}
+          markedCorrect={markedCorrect}
+        />
+      </div>
     </div>
   );
 }

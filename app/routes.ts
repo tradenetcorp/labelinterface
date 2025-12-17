@@ -10,4 +10,5 @@ export default [
   route("admin/users", "routes/admin/users.tsx"),
   route("admin/logs", "routes/admin/logs.tsx"),
   route("api/transcript", "routes/api/transcript.tsx"),
+  route("api/import-transcripts", "routes/api/import-transcripts.tsx"),
 ] satisfies RouteConfig;

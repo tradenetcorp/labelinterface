@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { requireUser } from "../lib/auth.server";
 import { logActivity } from "../lib/activity-log.server";
+import { prisma } from "../lib/prisma.server";
+import { getTranscriptAudioUrl } from "../lib/storage.server";
 import type { Route } from "./+types/home";
 import { ListenCheck } from "../components/listen-check";
 import { LoadingScreen } from "../components/loading-screen";
@@ -25,18 +27,50 @@ export async function loader({ request }: Route.LoaderArgs) {
     request,
   });
 
-  return { user };
+  // Fetch next pending transcript
+  const transcript = await prisma.transcript.findFirst({
+    where: { status: "pending" },
+    orderBy: { createdAt: "asc" },
+  });
+
+  // Get presigned audio URL if transcript exists
+  let audioUrl: string | null = null;
+  if (transcript) {
+    try {
+      audioUrl = await getTranscriptAudioUrl(transcript.s3AudioKey);
+    } catch (error) {
+      console.error("Failed to get audio URL:", error);
+    }
+  }
+
+  // Get total pending count
+  const pendingCount = await prisma.transcript.count({
+    where: { status: "pending" },
+  });
+
+  return {
+    user,
+    transcript: transcript
+      ? {
+          id: transcript.id,
+          originalText: transcript.originalText,
+          audioUrl,
+          s3AudioKey: transcript.s3AudioKey,
+        }
+      : null,
+    pendingCount,
+  };
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const user = loaderData?.user;
+  const { user, transcript, pendingCount } = loaderData ?? {};
 
   useEffect(() => {
-    // Simulate initial data loading
+    // Brief loading state for transition
     const timer = setTimeout(() => {
       setIsInitialLoading(false);
-    }, 1000);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, []);
@@ -45,5 +79,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     return <LoadingScreen />;
   }
 
-  return <ListenCheck userId={user?.id} userEmail={user?.email} />;
+  return (
+    <ListenCheck
+      userId={user?.id}
+      userEmail={user?.email}
+      transcript={transcript}
+      pendingCount={pendingCount ?? 0}
+    />
+  );
 }

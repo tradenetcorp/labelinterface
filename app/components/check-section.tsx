@@ -8,6 +8,7 @@ interface CheckSectionProps {
   onSubmit?: () => void;
   onSkip?: () => void;
   onTagChange?: (tags: string[]) => void;
+  markedCorrect?: boolean;
 }
 
 const TAG_OPTIONS = [
@@ -19,10 +20,9 @@ const TAG_OPTIONS = [
   "other",
 ];
 
-export function CheckSection({ transcript, onTranscriptChange, onCorrect, onEdit, onSubmit, onSkip, onTagChange }: CheckSectionProps) {
+export function CheckSection({ transcript, onTranscriptChange, onCorrect, onEdit, onSubmit, onSkip, onTagChange, markedCorrect = false }: CheckSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTranscript, setEditedTranscript] = useState(transcript);
-  const [isCorrect, setIsCorrect] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagSearchQuery, setTagSearchQuery] = useState("");
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
@@ -32,7 +32,6 @@ export function CheckSection({ transcript, onTranscriptChange, onCorrect, onEdit
   useEffect(() => {
     if (!isEditing) {
       setEditedTranscript(transcript);
-      setIsCorrect(false); // Reset correct state when transcript changes
       setSelectedTags([]); // Reset tags when not editing
       setTagSearchQuery(""); // Reset search query
       setIsTagDropdownOpen(false); // Close dropdown
@@ -97,7 +96,6 @@ export function CheckSection({ transcript, onTranscriptChange, onCorrect, onEdit
   };
 
   const handleCorrect = () => {
-    setIsCorrect(true);
     onCorrect?.();
   };
 
@@ -242,7 +240,7 @@ export function CheckSection({ transcript, onTranscriptChange, onCorrect, onEdit
                 <button
                   onClick={handleCorrect}
                   className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg border transition-colors font-medium ${
-                    isCorrect
+                    markedCorrect
                       ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
                       : "border-gray-300 bg-white hover:bg-gray-50 text-black"
                   }`}
