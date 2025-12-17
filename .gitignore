@@ -10,13 +10,13 @@
 
 # Cursor
 .cursor/
-
+data/
 # Database files
 prisma/*.db
 prisma/*.db-journal
 prisma/*.db-wal
 prisma/*.db-shm
-
+public/audio/transcripts/
 # Logs
 *.log
 npm-debug.log*

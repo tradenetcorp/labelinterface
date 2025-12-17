@@ -9,6 +9,8 @@
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.947.0",
+    "@aws-sdk/s3-request-presigner": "^3.947.0",
     "@prisma/client": "^5.20.0",
     "@react-router/node": "^7.9.2",
     "@react-router/serve": "^7.9.2",
