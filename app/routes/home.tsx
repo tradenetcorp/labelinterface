@@ -33,7 +33,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     orderBy: { createdAt: "asc" },
   });
 
-  // Get presigned audio URL if transcript exists
+  // Get audio URL if transcript exists
   let audioUrl: string | null = null;
   if (transcript) {
     try {

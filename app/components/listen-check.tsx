@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useFetcher, useRevalidator } from "react-router";
+import { useFetcher } from "react-router";
 import { ListenSection } from "./listen-section";
 import { CheckSection } from "./check-section";
 import { LoadingScreen } from "./loading-screen";
@@ -28,8 +28,7 @@ export function ListenCheck({
   const [markedCorrect, setMarkedCorrect] = useState(false);
 
   const fetcher = useFetcher();
-  const revalidator = useRevalidator();
-  const isLoading = fetcher.state !== "idle" || revalidator.state === "loading";
+  const isLoading = fetcher.state !== "idle";
 
   // Reset state when transcript changes
   const transcriptId = transcriptData?.id;
@@ -40,18 +39,37 @@ export function ListenCheck({
     setMarkedCorrect(false);
   }
 
-  // Empty state - no more transcripts to review
+  // Empty state - no transcripts to review
   if (!transcriptData) {
     return (
       <div className="flex h-[calc(100vh-120px)] items-center justify-center p-6">
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-4 max-w-md">
           <div className="text-6xl">🎉</div>
           <h2 className="text-2xl font-semibold text-gray-200">All caught up!</h2>
           <p className="text-gray-400">
             No more transcripts to review. Check back later or import new ones.
           </p>
+          <a
+            href="/admin/import"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+              />
+            </svg>
+            Import Transcripts
+          </a>
           {userEmail && (
-            <p className="text-sm text-gray-500">Logged in as {userEmail}</p>
+            <p className="text-sm text-gray-500 mt-4">Logged in as {userEmail}</p>
           )}
         </div>
       </div>
@@ -82,7 +100,7 @@ export function ListenCheck({
   };
 
   const handleEdit = () => {
-    // Edit is handled locally in CheckSection, no API call needed
+    // Edit is handled locally in CheckSection
     console.log("Edit mode toggled");
   };
 

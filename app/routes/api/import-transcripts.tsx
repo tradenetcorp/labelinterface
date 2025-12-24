@@ -1,5 +1,5 @@
 import { data } from "react-router";
-import { requireUser } from "../../lib/auth.server";
+import { requireAdmin } from "../../lib/auth.server";
 import { logActivity } from "../../lib/activity-log.server";
 import { getTranscriptTextContent } from "../../lib/storage.server";
 import { prisma } from "../../lib/prisma.server";
@@ -16,11 +16,9 @@ interface TranscriptRecord {
 }
 
 function extractFilename(record: TranscriptRecord): string | null {
-  // Try filename field first
   if (record.filename) {
     return record.filename;
   }
-  // Extract from path if present
   if (record.path) {
     const parts = record.path.split("/");
     return parts[parts.length - 1];
@@ -32,43 +30,25 @@ function getTranscriptionText(record: TranscriptRecord): string {
   return record.transcription || record.originalText || "";
 }
 
-// Resource route for importing transcripts from S3
+// POST: Import transcripts - clears existing and reimports all
 export async function action({ request }: Route.ActionArgs) {
-  const user = await requireUser(request);
-
-  // Only admins can import transcripts
-  if (user.role !== "admin") {
-    return data({ error: "Unauthorized" }, { status: 403 });
-  }
+  const user = await requireAdmin(request);
 
   try {
-    // Fetch JSONL from S3
+    // Fetch JSONL content from S3
     const jsonlContent = await getTranscriptTextContent(TRANSCRIPTS_JSONL_KEY);
 
     if (!jsonlContent) {
-      await logActivity({
-        userId: user.id,
-        action: "import_transcripts",
-        category: "admin",
-        status: "failure",
-        metadata: {
-          email: user.email,
-          reason: "JSONL file not found or empty",
-          s3Key: TRANSCRIPTS_JSONL_KEY,
-        },
-        request,
-      });
-      return data({ error: "Transcripts file not found in S3" }, { status: 404 });
+      return data({ error: `Transcripts file not found at: ${TRANSCRIPTS_JSONL_KEY}` }, { status: 404 });
     }
 
-    // Parse JSONL (one JSON object per line)
+    // Parse JSONL
     const lines = jsonlContent.split("\n").filter((line) => line.trim());
     const records: TranscriptRecord[] = [];
 
     for (const line of lines) {
       try {
-        const record = JSON.parse(line) as TranscriptRecord;
-        records.push(record);
+        records.push(JSON.parse(line));
       } catch {
         console.warn("Failed to parse JSONL line:", line);
       }
@@ -78,31 +58,18 @@ export async function action({ request }: Route.ActionArgs) {
       return data({ error: "No valid records found in JSONL" }, { status: 400 });
     }
 
-    // Import records to database
-    let imported = 0;
-    let skipped = 0;
+    // Clear all existing transcripts (for testing)
+    await prisma.transcript.deleteMany({});
 
+    // Import all records
+    let imported = 0;
     for (const record of records) {
       const filename = extractFilename(record);
-      if (!filename) {
-        skipped++;
-        continue;
-      }
+      if (!filename) continue;
 
       const s3AudioKey = `${TRANSCRIPTS_BASE_PATH}/${filename}`;
       const originalText = getTranscriptionText(record);
 
-      // Check if already exists
-      const existing = await prisma.transcript.findFirst({
-        where: { s3AudioKey },
-      });
-
-      if (existing) {
-        skipped++;
-        continue;
-      }
-
-      // Create new transcript record
       await prisma.transcript.create({
         data: {
           s3AudioKey,
@@ -112,7 +79,6 @@ export async function action({ request }: Route.ActionArgs) {
           markedCorrect: false,
         },
       });
-
       imported++;
     }
 
@@ -121,50 +87,28 @@ export async function action({ request }: Route.ActionArgs) {
       action: "import_transcripts",
       category: "admin",
       status: "success",
-      metadata: {
-        email: user.email,
-        totalRecords: records.length,
-        imported,
-        skipped,
-        s3Key: TRANSCRIPTS_JSONL_KEY,
-      },
+      metadata: { email: user.email, imported, total: records.length },
       request,
     });
 
     return data({
       success: true,
-      message: `Imported ${imported} transcripts, skipped ${skipped} (already exist or invalid)`,
+      message: `Cleared database and imported ${imported} transcripts`,
       imported,
-      skipped,
       total: records.length,
     });
   } catch (error) {
-    console.error("Import transcripts error:", error);
-    await logActivity({
-      userId: user.id,
-      action: "import_transcripts",
-      category: "admin",
-      status: "error",
-      metadata: {
-        email: user.email,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      request,
-    });
+    console.error("Import error:", error);
     return data(
-      { error: "Failed to import transcripts. Please try again." },
+      { error: error instanceof Error ? error.message : "Import failed" },
       { status: 500 }
     );
   }
 }
 
-// GET endpoint to check import status
+// GET: Return stats
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireUser(request);
-
-  if (user.role !== "admin") {
-    return data({ error: "Unauthorized" }, { status: 403 });
-  }
+  await requireAdmin(request);
 
   const stats = await prisma.transcript.groupBy({
     by: ["status"],
@@ -184,4 +128,3 @@ export async function loader({ request }: Route.LoaderArgs) {
     ),
   });
 }
-

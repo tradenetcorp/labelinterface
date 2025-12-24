@@ -5,7 +5,7 @@ declare global {
   var __prisma: PrismaClient | undefined;
 }
 
-// Avoid creating multiple PrismaClient instances in development
+// Singleton pattern to avoid multiple connections in development
 export const prisma = globalThis.__prisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== "production") {

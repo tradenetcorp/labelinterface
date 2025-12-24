@@ -68,6 +68,7 @@ export function ListenSection({ onPlay, audioUrl }: ListenSectionProps) {
   };
 
   const formatTime = (time: number) => {
+    if (!isFinite(time)) return "0:00";
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
@@ -173,10 +174,10 @@ export function ListenSection({ onPlay, audioUrl }: ListenSectionProps) {
                 <input
                   type="range"
                   min="0"
-                  max={duration}
+                  max={duration || 100}
                   value={currentTime}
                   onChange={handleSeek}
-                  className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb"
+                  className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
                   style={{
                     background: `linear-gradient(to right, rgb(139, 92, 246) ${progress}%, rgb(75, 85, 99) ${progress}%)`,
                   }}

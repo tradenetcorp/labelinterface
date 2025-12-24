@@ -1,5 +1,7 @@
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { readFile } from "fs/promises";
+import { join } from "path";
 
 /**
  * Storage type configuration
@@ -122,14 +124,20 @@ export async function getTranscriptTextUrl(s3TextKey: string | null): Promise<st
 }
 
 /**
- * Get transcript text content from S3 (if stored separately)
- * Returns null for local storage (text should be in database)
+ * Get transcript text content from S3 or local filesystem
+ * Supports both S3 and local storage for dev testing
  */
 export async function getTranscriptTextContent(s3TextKey: string | null): Promise<string | null> {
-  if (!s3TextKey || STORAGE_TYPE === "local") {
-    return null; // Text should be in database for local storage
+  if (!s3TextKey) {
+    return null;
   }
 
+  // Local storage: read from filesystem
+  if (STORAGE_TYPE === "local") {
+    return getLocalFileContent(s3TextKey);
+  }
+
+  // S3 storage
   if (!AWS_S3_BUCKET) {
     throw new Error("AWS_S3_BUCKET environment variable is required for S3 storage");
   }
@@ -151,6 +159,34 @@ export async function getTranscriptTextContent(s3TextKey: string | null): Promis
     return text || null;
   } catch (error) {
     console.error("Failed to fetch transcript text from S3:", error);
+    return null;
+  }
+}
+
+/**
+ * Read file content from local filesystem
+ * Used for local development testing
+ */
+export async function getLocalFileContent(relativePath: string): Promise<string | null> {
+  try {
+    // Handle paths that might include the public prefix or not
+    let filePath = relativePath;
+    
+    // If path starts with public/, use it directly from project root
+    if (relativePath.startsWith("public/")) {
+      filePath = join(process.cwd(), relativePath);
+    } else if (relativePath.startsWith("audio/")) {
+      // If path is like "audio/transcripts/...", prepend public/
+      filePath = join(process.cwd(), "public", relativePath);
+    } else {
+      // Otherwise use LOCAL_TRANSCRIPTS_PATH
+      filePath = join(process.cwd(), LOCAL_TRANSCRIPTS_PATH.replace(/^\.\//, ""), relativePath);
+    }
+
+    const content = await readFile(filePath, "utf-8");
+    return content;
+  } catch (error) {
+    console.error("Failed to read local file:", relativePath, error);
     return null;
   }
 }
