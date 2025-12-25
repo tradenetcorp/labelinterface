@@ -28,7 +28,11 @@ export function ListenCheck({
   const [markedCorrect, setMarkedCorrect] = useState(false);
 
   const fetcher = useFetcher();
-  const isLoading = fetcher.state !== "idle";
+  
+  
+  const formData = fetcher.formData;
+  const currentAction = formData?.get("action")?.toString();
+  const isNavigating = fetcher.state !== "idle" && (currentAction === "submit" || currentAction === "skip");
 
   // Reset state when transcript changes
   const transcriptId = transcriptData?.id;
@@ -127,7 +131,7 @@ export function ListenCheck({
     );
   };
 
-  if (isLoading) {
+  if (isNavigating) {
     return <LoadingScreen />;
   }
 
