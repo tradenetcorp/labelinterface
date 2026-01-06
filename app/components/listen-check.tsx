@@ -26,10 +26,11 @@ export function ListenCheck({
 }: ListenCheckProps) {
   const [editedText, setEditedText] = useState(transcriptData?.originalText ?? "");
   const [markedCorrect, setMarkedCorrect] = useState(false);
+  const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
 
   const fetcher = useFetcher();
-  
-  
+
+
   const formData = fetcher.formData;
   const currentAction = formData?.get("action")?.toString();
   const isNavigating = fetcher.state !== "idle" && (currentAction === "submit" || currentAction === "skip");
@@ -41,6 +42,7 @@ export function ListenCheck({
     setLastTranscriptId(transcriptId);
     setEditedText(transcriptData?.originalText ?? "");
     setMarkedCorrect(false);
+    setSelectedLabels([]);
   }
 
   // Empty state - no transcripts to review
@@ -116,6 +118,7 @@ export function ListenCheck({
         transcript: editedText,
         originalTranscript: transcriptData.originalText,
         markedCorrect: String(markedCorrect),
+        labels: JSON.stringify(selectedLabels),
       },
       { method: "post", action: "/api/transcript" }
     );
@@ -157,6 +160,7 @@ export function ListenCheck({
           onEdit={handleEdit}
           onSubmit={handleSubmit}
           onSkip={handleSkip}
+          onTagChange={setSelectedLabels}
           markedCorrect={markedCorrect}
         />
       </div>

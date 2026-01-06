@@ -75,6 +75,7 @@ model Transcript {
   // Status Tracking
   status        String    @default("pending") // "pending", "completed", "skipped"
   markedCorrect Boolean   @default(false)
+  labels        String?   // JSON string of selected labels (e.g., '["Male", "Dhivehi"]')
   
   // User Tracking (optional)
   reviewedById  Int?

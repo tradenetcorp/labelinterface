@@ -61,6 +61,7 @@ export async function action({ request }: Route.ActionArgs) {
         const originalTranscript =
           formData.get("originalTranscript")?.toString() || "";
         const markedCorrect = formData.get("markedCorrect") === "true";
+        const labels = formData.get("labels")?.toString() || "[]";
         const wasEdited = transcript !== originalTranscript;
 
         // Update transcript in database
@@ -71,6 +72,7 @@ export async function action({ request }: Route.ActionArgs) {
               editedText: wasEdited ? transcript : null,
               status: "completed",
               markedCorrect,
+              labels,
               reviewedById: user.id,
             },
           });
@@ -88,6 +90,7 @@ export async function action({ request }: Route.ActionArgs) {
             originalLength: originalTranscript.length,
             wasEdited,
             markedCorrect,
+            labels,
           },
           request,
         });

@@ -12,10 +12,10 @@ interface CheckSectionProps {
 }
 
 const TAG_OPTIONS = [
-  "developer",
-  "designer",
-  "manager",
-  "tester",
+  "Male",
+  "Female",
+  "Dhivehi",
+  "English",
   "analyst",
   "other",
 ];
