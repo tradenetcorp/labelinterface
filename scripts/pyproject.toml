@@ -1,0 +1,13 @@
+[project]
+name = "labelapp-scripts"
+version = "0.1.0"
+description = "ASR and audio processing scripts for labelapp"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "torch",
+    "torchaudio",
+    "pyannote-audio",
+]
+
+[dependency-groups]
+dev = []

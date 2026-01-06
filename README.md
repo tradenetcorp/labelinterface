@@ -125,3 +125,37 @@ app/
 prisma/
   schema.prisma         # Database schema
   seed.ts              # Database seed script
+scripts/
+  asr_scripts/          # ASR and audio processing scripts
+```
+
+## Scripts
+
+Python scripts for ASR (Automatic Speech Recognition) and audio processing are located in the `scripts/` directory.
+
+### Prerequisites
+
+- [uv](https://docs.astral.sh/uv/) (Python package manager)
+
+### Setup
+
+```bash
+cd scripts
+uv sync
+```
+
+### Available Scripts
+
+**pyannotesplit.py** - Speaker diarization using pyannote.audio
+```bash
+cd scripts
+uv run python asr_scripts/pyannotesplit.py
+```
+Requires `HF_TOKEN` environment variable for Hugging Face authentication.
+
+**omniasr.py** - Batch ASR transcription
+```bash
+cd scripts
+uv run python asr_scripts/omniasr.py --input-dir <audio-dir> --output-file <output.jsonl>
+```
+Requires the `omnilingual-asr` package to be installed separately.
