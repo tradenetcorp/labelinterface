@@ -61,10 +61,24 @@ export async function action({ request }: Route.ActionArgs) {
         const originalTranscript =
           formData.get("originalTranscript")?.toString() || "";
         const markedCorrect = formData.get("markedCorrect") === "true";
+        const labelsJson = formData.get("labels")?.toString() || "[]";
         const wasEdited = transcript !== originalTranscript;
+
+        // Parse label names
+        let labelNames: string[] = [];
+        try {
+          labelNames = JSON.parse(labelsJson);
+        } catch {
+          labelNames = [];
+        }
 
         // Update transcript in database
         if (!isNaN(transcriptId)) {
+          // Find label records by name
+          const labelRecords = await prisma.label.findMany({
+            where: { name: { in: labelNames } },
+          });
+
           await prisma.transcript.update({
             where: { id: transcriptId },
             data: {
@@ -72,6 +86,9 @@ export async function action({ request }: Route.ActionArgs) {
               status: "completed",
               markedCorrect,
               reviewedById: user.id,
+              labels: {
+                set: labelRecords.map((l) => ({ id: l.id })),
+              },
             },
           });
         }
@@ -88,6 +105,7 @@ export async function action({ request }: Route.ActionArgs) {
             originalLength: originalTranscript.length,
             wasEdited,
             markedCorrect,
+            labels: labelNames,
           },
           request,
         });

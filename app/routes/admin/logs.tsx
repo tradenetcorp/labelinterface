@@ -183,6 +183,12 @@ export default function AdminLogsPage({ loaderData }: Route.ComponentProps) {
           >
             User Management
           </a>
+          <a
+            href="/admin/labels"
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Label Management
+          </a>
           <a href="/" className="text-sm text-blue-600 hover:underline">
             Back to Home
           </a>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFetcher } from "react-router";
 import { ListenSection } from "./listen-section";
 import { CheckSection } from "./check-section";
@@ -11,11 +11,18 @@ interface TranscriptData {
   s3AudioKey: string;
 }
 
+export interface LabelOption {
+  id: number;
+  name: string;
+  shortcut: string | null;
+}
+
 interface ListenCheckProps {
   userId?: number;
   userEmail?: string;
   transcript?: TranscriptData | null;
   pendingCount: number;
+  labels: LabelOption[];
 }
 
 export function ListenCheck({
@@ -23,6 +30,7 @@ export function ListenCheck({
   userEmail,
   transcript: transcriptData,
   pendingCount,
+  labels,
 }: ListenCheckProps) {
   const [editedText, setEditedText] = useState(transcriptData?.originalText ?? "");
   const [markedCorrect, setMarkedCorrect] = useState(false);
@@ -108,24 +116,15 @@ export function ListenCheck({
     );
   };
 
-  const TAG_OPTIONS = [
-    "Male",
-    "Female",
-    "Dhivehi",
-    "English",
-    "analyst",
-    "other",
-  ];
-
-  const filteredTags = TAG_OPTIONS.filter(tag =>
-    tag.toLowerCase().includes(tagSearchQuery.toLowerCase())
+  const filteredLabels = labels.filter(label =>
+    label.name.toLowerCase().includes(tagSearchQuery.toLowerCase())
   );
 
-  const toggleTag = (tag: string) => {
-    const newSelectedTags = selectedLabels.includes(tag)
-      ? selectedLabels.filter(t => t !== tag)
-      : [...selectedLabels, tag];
-    setSelectedLabels(newSelectedTags);
+  const toggleLabel = (labelName: string) => {
+    const newSelectedLabels = selectedLabels.includes(labelName)
+      ? selectedLabels.filter(l => l !== labelName)
+      : [...selectedLabels, labelName];
+    setSelectedLabels(newSelectedLabels);
   };
 
   const handleTagSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,6 +156,32 @@ export function ListenCheck({
     );
   };
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for modifier key (Alt)
+      if (e.altKey) {
+        switch (e.key.toLowerCase()) {
+          case "s":
+            e.preventDefault();
+            handleSkip();
+            break;
+          case "c":
+            e.preventDefault();
+            handleCorrect();
+            break;
+          case "enter":
+            e.preventDefault();
+            handleSubmit();
+            break;
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleSkip, handleCorrect, handleSubmit]); // Dependencies required for stable references/closures
+
   if (isNavigating) {
     return <LoadingScreen />;
   }
@@ -180,6 +205,9 @@ export function ListenCheck({
           <CheckSection
             transcript={editedText}
             onTranscriptChange={setEditedText}
+            selectedLabels={selectedLabels}
+            onToggleLabel={toggleLabel}
+            labels={labels}
           />
         </div>
       </div>
@@ -217,15 +245,15 @@ export function ListenCheck({
             {/* Selected Tags Display */}
             {selectedLabels.length > 0 && (
               <div className="absolute bottom-full left-0 mb-2 flex flex-wrap gap-2">
-                {selectedLabels.map(tag => (
+                {selectedLabels.map(labelName => (
                   <span
-                    key={tag}
+                    key={labelName}
                     className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs shadow-sm"
                   >
-                    {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                    {labelName}
                     <button
                       type="button"
-                      onClick={() => toggleTag(tag)}
+                      onClick={() => toggleLabel(labelName)}
                       className="hover:text-blue-600 focus:outline-none"
                     >
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -240,41 +268,52 @@ export function ListenCheck({
             {/* Dropdown Options */}
             {isTagDropdownOpen && (
               <div className="absolute bottom-full left-0 w-full mb-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                {filteredTags.length > 0 ? (
+                {filteredLabels.length > 0 ? (
                   <div className="py-1">
-                    {filteredTags.map(tag => (
+                    {filteredLabels.map(label => (
                       <label
-                        key={tag}
+                        key={label.id}
                         className="flex items-center px-3 py-2 hover:bg-gray-100 cursor-pointer"
                         onMouseDown={(e) => e.preventDefault()} // Prevent blur on click
                       >
                         <input
                           type="checkbox"
-                          checked={selectedLabels.includes(tag)}
-                          onChange={() => toggleTag(tag)}
+                          checked={selectedLabels.includes(label.name)}
+                          onChange={() => toggleLabel(label.name)}
                           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
                         <span className="ml-2 text-black text-sm">
-                          {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                          {label.name}
+                          {label.shortcut && (
+                            <span className="ml-1 text-gray-400 text-xs">(Alt+{label.shortcut.toUpperCase()})</span>
+                          )}
                         </span>
                       </label>
                     ))}
                   </div>
                 ) : (
                   <div className="px-3 py-2 text-gray-500 text-sm">
-                    No tags found
+                    No labels found
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          <div className="flex-1"></div>
+          <div className="flex-1 text-center">
+            <span className="text-xs text-gray-400 font-medium">
+              Shortcuts: Skip <kbd className="font-sans">Alt+S</kbd> • Correct <kbd className="font-sans">Alt+C</kbd> • Submit <kbd className="font-sans">Alt+Enter</kbd>
+              {labels.filter(l => l.shortcut).length > 0 && (
+                <> • Labels {labels.filter(l => l.shortcut).map(l => <kbd key={l.id} className="font-sans">Alt+{l.shortcut?.toUpperCase()}</kbd>).reduce((prev, curr, i) => i === 0 ? [curr] : [...prev, '/', curr], [] as React.ReactNode[])}</>
+              )}
+            </span>
+          </div>
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
             <button
               onClick={handleSkip}
+              title="Alt+S"
               className="px-6 py-2.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 transition-colors text-black font-medium text-sm flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -285,6 +324,7 @@ export function ListenCheck({
 
             <button
               onClick={handleCorrect}
+              title="Alt+C"
               className={`px-6 py-2.5 rounded-lg border transition-colors font-medium text-sm flex items-center gap-2 ${markedCorrect
                 ? "bg-green-600 hover:bg-green-700 text-white border-green-600"
                 : "border-gray-300 bg-white hover:bg-gray-50 text-black"
@@ -298,6 +338,7 @@ export function ListenCheck({
 
             <button
               onClick={handleSubmit}
+              title="Alt+Enter"
               className="px-8 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors shadow-sm text-sm flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

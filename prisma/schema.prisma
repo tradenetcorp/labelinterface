@@ -63,28 +63,43 @@ model ActivityLog {
 
 model Transcript {
   id            Int       @id @default(autoincrement())
-  
+
   // S3 Storage References
   s3AudioKey    String    // S3 key for audio file (e.g., "transcripts/audio-123.mp3")
   s3TextKey     String?   // Optional: S3 key for transcript text file (if stored separately)
-  
+
   // Transcript Content
   originalText  String    // Original transcript text (from S3 or initial processing)
   editedText    String?   // User-edited transcript text
-  
+
   // Status Tracking
   status        String    @default("pending") // "pending", "completed", "skipped"
   markedCorrect Boolean   @default(false)
-  
+
   // User Tracking (optional)
   reviewedById  Int?
   reviewedBy    User?     @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
-  
+
+  // Labels (many-to-many)
+  labels        Label[]   @relation("TranscriptLabels")
+
   // Timestamps
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+
   @@index([status])
   @@index([createdAt])
   @@index([reviewedById])
+}
+
+model Label {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  description String?
+  shortcut    String?      // Keyboard shortcut key (e.g., "m" for Alt+M)
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  transcripts Transcript[] @relation("TranscriptLabels")
 }

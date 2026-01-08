@@ -48,6 +48,17 @@ export async function loader({ request }: Route.LoaderArgs) {
     where: { status: "pending" },
   });
 
+  // Fetch active labels
+  const labels = await prisma.label.findMany({
+    where: { active: true },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      shortcut: true,
+    },
+  });
+
   return {
     user,
     transcript: transcript
@@ -59,12 +70,13 @@ export async function loader({ request }: Route.LoaderArgs) {
         }
       : null,
     pendingCount,
+    labels,
   };
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const { user, transcript, pendingCount } = loaderData ?? {};
+  const { user, transcript, pendingCount, labels } = loaderData ?? {};
 
   useEffect(() => {
     // Brief loading state for transition
@@ -85,6 +97,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       userEmail={user?.email}
       transcript={transcript}
       pendingCount={pendingCount ?? 0}
+      labels={labels ?? []}
     />
   );
 }

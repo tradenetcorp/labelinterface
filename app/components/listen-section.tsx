@@ -13,11 +13,11 @@ export function ListenSection({ onPlay, audioUrl }: ListenSectionProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [canPlay, setCanPlay] = useState(false);
-  
+
   // Track URLs to prevent unnecessary resets when only presigned signature changes
   const prevAudioUrlRef = useRef<string | null | undefined>(undefined);
   const [stableAudioUrl, setStableAudioUrl] = useState<string | null>(audioUrl ?? null);
-  
+
   // Helper to extract base URL without query string (for presigned URL comparison)
   const getBaseUrl = (url: string | null | undefined): string | null => {
     if (!url) return null;
@@ -33,15 +33,15 @@ export function ListenSection({ onPlay, audioUrl }: ListenSectionProps) {
   useEffect(() => {
     const prevBase = getBaseUrl(prevAudioUrlRef.current);
     const newBase = getBaseUrl(audioUrl);
-    
+
     // Skip if the base URL (file path) hasn't changed - only signature changed
     if (prevBase === newBase && prevBase !== null) {
       return;
     }
-    
+
     prevAudioUrlRef.current = audioUrl;
     setStableAudioUrl(audioUrl ?? null);
-    
+
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
@@ -49,7 +49,7 @@ export function ListenSection({ onPlay, audioUrl }: ListenSectionProps) {
     setIsLoading(true);
     setCanPlay(false);
   }, [audioUrl]);
-  
+
   // Separate effect to load audio when stableAudioUrl changes
   useEffect(() => {
     if (audioRef.current && stableAudioUrl) {
@@ -69,7 +69,7 @@ export function ListenSection({ onPlay, audioUrl }: ListenSectionProps) {
     } else {
       setIsLoading(true);
       setError(null);
-      
+
       try {
         // Ensure audio is ready before playing
         if (audio.readyState < 2) {
@@ -96,7 +96,7 @@ export function ListenSection({ onPlay, audioUrl }: ListenSectionProps) {
       } catch (err) {
         console.error("Audio playback failed:", err);
         const errorMessage = err instanceof Error ? err.message : "Unknown error";
-        
+
         if (errorMessage.includes("NotAllowedError") || errorMessage.includes("not allowed")) {
           setError("Playback blocked. Click to enable audio.");
         } else if (errorMessage.includes("NotSupportedError") || errorMessage.includes("not supported")) {
@@ -160,7 +160,7 @@ export function ListenSection({ onPlay, audioUrl }: ListenSectionProps) {
   const handleError = (e: React.SyntheticEvent<HTMLAudioElement>) => {
     const audio = e.currentTarget;
     const mediaError = audio.error;
-    
+
     let errorMessage = "Failed to load audio file";
     if (mediaError) {
       switch (mediaError.code) {
@@ -179,7 +179,7 @@ export function ListenSection({ onPlay, audioUrl }: ListenSectionProps) {
       }
       console.error("Audio error:", mediaError.code, mediaError.message);
     }
-    
+
     setError(errorMessage);
     setIsPlaying(false);
     setIsLoading(false);
@@ -193,6 +193,20 @@ export function ListenSection({ onPlay, audioUrl }: ListenSectionProps) {
   };
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  // Keyboard shortcut for Play/Pause
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Alt+P
+      if (e.altKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        handlePlayPause();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handlePlayPause]);
 
   return (
     <div className="flex-1 flex flex-col">
@@ -258,13 +272,13 @@ export function ListenSection({ onPlay, audioUrl }: ListenSectionProps) {
           <button
             onClick={handlePlayPause}
             disabled={!audioUrl || (isLoading && !isPlaying)}
-            className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-lg ${
-              audioUrl && !isLoading
+            title="Play/Pause (Alt+P)"
+            className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-lg ${audioUrl && !isLoading
                 ? "bg-white/10 border-2 border-violet-500 hover:bg-violet-500/20 cursor-pointer"
                 : audioUrl && isLoading
-                ? "bg-white/10 border-2 border-violet-500/50 cursor-wait"
-                : "bg-gray-700/50 border-2 border-gray-600 cursor-not-allowed"
-            }`}
+                  ? "bg-white/10 border-2 border-violet-500/50 cursor-wait"
+                  : "bg-gray-700/50 border-2 border-gray-600 cursor-not-allowed"
+              }`}
           >
             {isLoading && !isPlaying ? (
               <svg

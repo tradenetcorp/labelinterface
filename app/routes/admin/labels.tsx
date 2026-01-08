@@ -1,24 +1,20 @@
-import { PrismaClient } from "@prisma/client";
 import { requireAdmin } from "../../lib/auth.server";
 import { logActivity } from "../../lib/activity-log.server";
 import { errorResponse } from "../../lib/responses.server";
+import { prisma } from "../../lib/prisma.server";
 import {
-  handleCreateUser,
-  handleUpdateUser,
-  handleDeactivateUser,
-  handleReactivateUser,
-  handleDeleteUser,
-} from "../../lib/user-actions.server";
-import { CreateUserForm } from "../../components/admin/create-user-form";
-import { UsersTable } from "../../components/admin/users-table";
-import type { Route } from "./+types/users";
-
-const prisma = new PrismaClient();
+  handleCreateLabel,
+  handleUpdateLabel,
+  handleDeleteLabel,
+} from "../../lib/label-actions.server";
+import { CreateLabelForm } from "../../components/admin/create-label-form";
+import { LabelsTable } from "../../components/admin/labels-table";
+import type { Route } from "./+types/labels";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "User Management" },
-    { name: "description", content: "Admin user management panel" },
+    { title: "Label Management" },
+    { name: "description", content: "Admin label management panel" },
   ];
 }
 
@@ -27,18 +23,23 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   await logActivity({
     userId: adminUser.id,
-    action: "view_admin_users",
+    action: "view_admin_labels",
     category: "page",
     status: "success",
     metadata: { email: adminUser.email, role: adminUser.role },
     request,
   });
 
-  const users = await prisma.user.findMany({
+  const labels = await prisma.label.findMany({
     orderBy: { createdAt: "desc" },
+    include: {
+      _count: {
+        select: { transcripts: true },
+      },
+    },
   });
 
-  return { users, currentUserId: adminUser.id };
+  return { labels };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -49,27 +50,22 @@ export async function action({ request }: Route.ActionArgs) {
   try {
     switch (intent) {
       case "create":
-        return handleCreateUser(formData, adminUser, request);
+        return handleCreateLabel(formData, adminUser, request);
       case "update":
-        return handleUpdateUser(formData, adminUser, request);
-      case "deactivate":
-        return handleDeactivateUser(formData, adminUser, request);
-      case "reactivate":
-        return handleReactivateUser(formData, adminUser, request);
+        return handleUpdateLabel(formData, adminUser, request);
       case "delete":
-        return handleDeleteUser(formData, adminUser, request);
+        return handleDeleteLabel(formData, adminUser, request);
       default:
         return errorResponse("Invalid intent");
     }
   } catch (error) {
-    console.error("Admin action error:", error);
+    console.error("Admin label action error:", error);
     return errorResponse("An error occurred. Please try again.", 500);
   }
 }
 
-export default function AdminUsersPage({ loaderData, actionData }: Route.ComponentProps) {
-  const users = loaderData?.users || [];
-  const currentUserId = loaderData?.currentUserId || 0;
+export default function AdminLabelsPage({ loaderData, actionData }: Route.ComponentProps) {
+  const labels = loaderData?.labels || [];
   const error = actionData && typeof actionData === "object" && "error" in actionData
     ? (actionData as { error: string }).error
     : undefined;
@@ -77,14 +73,14 @@ export default function AdminUsersPage({ loaderData, actionData }: Route.Compone
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-black">User Management</h1>
+        <h1 className="text-2xl font-semibold text-black">Label Management</h1>
         <div className="flex gap-4">
-          <a href="/admin/labels" className="text-sm text-blue-600 hover:underline">
-            Label Management
+          <a href="/admin/users" className="text-sm text-blue-600 hover:underline">
+            User Management
           </a>
-          {/* <a href="/admin/logs" className="text-sm text-blue-600 hover:underline">
+          <a href="/admin/logs" className="text-sm text-blue-600 hover:underline">
             Activity Logs
-          </a> */}
+          </a>
           <a href="/" className="text-sm text-blue-600 hover:underline">
             Back to Home
           </a>
@@ -97,8 +93,8 @@ export default function AdminUsersPage({ loaderData, actionData }: Route.Compone
         </div>
       )}
 
-      <CreateUserForm />
-      <UsersTable users={users} currentUserId={currentUserId} />
+      <CreateLabelForm />
+      <LabelsTable labels={labels} />
     </div>
   );
 }
