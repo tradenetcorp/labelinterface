@@ -1,10 +1,12 @@
-import { useRef, useEffect } from "react";
+import { useEffect } from "react";
+import type { LabelOption } from "./listen-check";
 
 interface CheckSectionProps {
   transcript: string;
   onTranscriptChange: (value: string) => void;
   selectedLabels: string[];
   onToggleLabel: (label: string) => void;
+  labels: LabelOption[];
 }
 
 export function CheckSection({
@@ -12,29 +14,23 @@ export function CheckSection({
   onTranscriptChange,
   selectedLabels,
   onToggleLabel,
+  labels,
 }: CheckSectionProps) {
-  const LABELS = [
-    { id: "Male", label: "Male (Alt+M)", shortcut: "m" },
-    { id: "Female", label: "Female (Alt+F)", shortcut: "f" },
-    { id: "Dhivehi", label: "Dhivehi (Alt+D)", shortcut: "d" },
-    { id: "English", label: "English (Alt+E)", shortcut: "e" },
-  ];
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey) {
         const key = e.key.toLowerCase();
-        const found = LABELS.find((l) => l.shortcut === key);
+        const found = labels.find((l) => l.shortcut === key);
         if (found) {
           e.preventDefault();
-          onToggleLabel(found.id);
+          onToggleLabel(found.name);
         }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onToggleLabel]);
+  }, [labels, onToggleLabel]);
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -52,12 +48,12 @@ export function CheckSection({
 
         {/* Labels Toolbar */}
         <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
-          {LABELS.map((item) => {
-            const isSelected = selectedLabels.includes(item.id);
+          {labels.map((label) => {
+            const isSelected = selectedLabels.includes(label.name);
             return (
               <button
-                key={item.id}
-                onClick={() => onToggleLabel(item.id)}
+                key={label.id}
+                onClick={() => onToggleLabel(label.name)}
                 className={`
                   relative px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 border
                   focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500
@@ -66,7 +62,7 @@ export function CheckSection({
                     : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
                   }
                 `}
-                title={`Press Alt+${item.shortcut.toUpperCase()}`}
+                title={label.shortcut ? `Press Alt+${label.shortcut.toUpperCase()}` : label.name}
               >
                 <div className="flex items-center gap-2">
                   <div className={`
@@ -79,7 +75,7 @@ export function CheckSection({
                       </svg>
                     )}
                   </div>
-                  {item.label.split(" (")[0]}
+                  {label.name}
                 </div>
                 <span className="sr-only">{isSelected ? "Selected" : "Not selected"}</span>
               </button>
