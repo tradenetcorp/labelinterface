@@ -26,3 +26,6 @@ yarn-error.log*
 # IDE (optional - remove if your team uses these)
 .vscode/
 .idea/
+
+# Docker
+docker/postgres-data/
