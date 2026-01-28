@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   const isProduction = process.env.NODE_ENV === "production";
 
-  const adminEmail = process.env.ADMIN_EMAIL || (isProduction ? "" : "admin@mindco.mv");
+  const adminEmail = process.env.ADMIN_EMAIL || (isProduction ? "" : "admin@example.com");
   const adminPassword = process.env.ADMIN_PASSWORD || (isProduction ? "" : "email");
 
   if (isProduction && (!adminEmail || !adminPassword)) {
@@ -24,15 +24,17 @@ async function main() {
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
   if (existingAdmin) {
-    // Update existing admin with password if it doesn't have one
-    if (!existingAdmin.password) {
+    // Update existing admin: ensure role is admin and password is set
+    const needsUpdate = !existingAdmin.password || existingAdmin.role !== "admin";
+    if (needsUpdate) {
       await prisma.user.update({
         where: { email: adminEmail },
         data: {
-          password: hashedPassword,
+          password: existingAdmin.password ? undefined : hashedPassword,
+          role: "admin",
         },
       });
-      console.log(`Updated admin user password: ${adminEmail}`);
+      console.log(`Updated admin user: ${adminEmail} (role: admin)`);
     } else {
       console.log(`Admin user already exists: ${adminEmail}`);
     }

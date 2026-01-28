@@ -76,13 +76,16 @@ export default function AdminLabelsPage({ loaderData, actionData }: Route.Compon
         <h1 className="text-2xl font-semibold text-black">Label Management</h1>
         <div className="flex gap-4">
           <a href="/admin/users" className="text-sm text-blue-600 hover:underline">
-            User Management
+            Users
           </a>
-          <a href="/admin/logs" className="text-sm text-blue-600 hover:underline">
+          <a href="/admin/import" className="text-sm text-blue-600 hover:underline">
+            Import
+          </a>
+          {/* <a href="/admin/logs" className="text-sm text-blue-600 hover:underline">
             Activity Logs
-          </a>
+          </a> */}
           <a href="/" className="text-sm text-blue-600 hover:underline">
-            Back to Home
+            Home
           </a>
         </div>
       </div>

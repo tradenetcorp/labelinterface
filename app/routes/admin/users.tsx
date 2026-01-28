@@ -80,13 +80,16 @@ export default function AdminUsersPage({ loaderData, actionData }: Route.Compone
         <h1 className="text-2xl font-semibold text-black">User Management</h1>
         <div className="flex gap-4">
           <a href="/admin/labels" className="text-sm text-blue-600 hover:underline">
-            Label Management
+            Labels
+          </a>
+          <a href="/admin/import" className="text-sm text-blue-600 hover:underline">
+            Import
           </a>
           {/* <a href="/admin/logs" className="text-sm text-blue-600 hover:underline">
             Activity Logs
           </a> */}
           <a href="/" className="text-sm text-blue-600 hover:underline">
-            Back to Home
+            Home
           </a>
         </div>
       </div>

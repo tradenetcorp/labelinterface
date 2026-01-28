@@ -6,7 +6,7 @@ Audio labeling application built with React Router and custom email-OTP authenti
 
 - **Framework**: React Router v7
 - **Authentication**: Custom email-OTP with cookie sessions
-- **Database**: SQLite (via Prisma)
+- **Database**: PostgreSQL (via Prisma)
 - **Styling**: Tailwind CSS
 - **Language**: TypeScript
 - **Build Tool**: Vite
@@ -32,11 +32,17 @@ npm install
 ```
 
 3. Set up environment variables:
-Create a `.env` file in the root directory with the following:
+Copy the docker-friendly env file, then customize as needed:
+
+```bash
+cp .env.docker .env
+```
+
+Or create a `.env` file in the root directory with the following:
 
 ```env
 # Database
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://labelapp:labelapp@localhost:5432/labelapp?schema=public"
 
 # Session
 SESSION_SECRET="change-this-to-a-random-string-in-production"
@@ -48,8 +54,9 @@ SMTP_USER="your-email@gmail.com"
 SMTP_PASS="your-app-password"
 SMTP_FROM="your-email@gmail.com"
 
-# Admin User (optional, defaults to admin@example.com)
+# Admin User
 ADMIN_EMAIL="admin@example.com"
+ADMIN_PASSWORD="email"
 ```
 
 **Important**: 
@@ -57,7 +64,12 @@ ADMIN_EMAIL="admin@example.com"
 - For Gmail, you'll need to create an App Password: https://support.google.com/accounts/answer/185833
 - In development, if SMTP is not configured, OTP codes will be logged to the console
 
-4. Set up the database:
+4. Start PostgreSQL (Docker):
+```bash
+docker compose up -d postgres
+```
+
+5. Set up the database:
 ```bash
 # Run migrations
 npx prisma migrate dev
@@ -74,6 +86,11 @@ npm run dev
 ```
 
 The application will be available at `http://localhost:5173`.
+
+### Docker PostgreSQL Notes
+
+- Data persists in `docker/postgres-data/` (ignored by git)
+- To stop the DB: `docker compose down`
 
 ### Authentication Flow
 
